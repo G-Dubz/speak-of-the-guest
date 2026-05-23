@@ -101,4 +101,12 @@ export default function FinalCountLanding() {
         .btn-preset:disabled:not(.active) { opacity: 0.6; background: #faf7f2; border-color: #ebdccb; color: #888; cursor: not-allowed; }
 
         .grid-layout { display: grid; grid-template-columns: 1fr; gap: 60px; margin-top: 60px; }
-        @media (min-width: 768px) { .grid-layout { grid-template-columns: 1fr 1fr; } .title {
+        @media (min-width: 768px) { .grid-layout { grid-template-columns: 1fr 1fr; } .title { font-size: 64px; } }
+        
+        .phone-mock { background-color: #ffffff; border: 12px solid #1a1a1a; border-radius: 40px; height: 620px; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); position: relative; overflow: hidden; transition: all 0.4s ease; }
+        .phone-mock.active-ring { box-shadow: 0 0 0 6px rgba(191, 168, 143, 0.4), 0 25px 50px -12px rgba(0,0,0,0.25); transform: scale(1.02); }
+        
+        .sheet-mock { background: white; border-radius: 12px; border: 1px solid #ebdccb; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); transition: all 0.4s ease; }
+        .sheet-mock.active-ring { box-shadow: 0 0 0 6px rgba(191, 168, 143, 0.4), 0 20px 25px -5px rgba(0,0,0,0.1); transform: scale(1.02); }
+        .sheet-header { background: #332a22; color: #faf7f2; padding: 16px; font-family: serif; font-size: 14px; display: flex; justify-content: space-between; }
+        .table { width:
