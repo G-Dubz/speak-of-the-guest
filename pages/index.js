@@ -1,183 +1,230 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function Home() {
+const SIMULATOR_PRESETS = [
+  {
+    buttonLabel: "Messy RSVP Paragraph",
+    text: "Hey! Yes we're both coming but Jan is gluten-free now. Skipping the Friday welcome dinner, see you Saturday!",
+    parsed: { status: "Confirmed", events: "Saturday Only", plusOne: "Yes (Jan)", dietary: "Gluten-Free" }
+  },
+  {
+    buttonLabel: "Last-Minute Change",
+    text: "Actually it's just going to be me, sorry! My partner has to work. Can't wait for the ceremony though!",
+    parsed: { status: "Confirmed", events: "All Events", plusOne: "No", dietary: "None" }
+  },
+  {
+    buttonLabel: "Polite Decline",
+    text: "Oh no, we are so bummed but we will be out of town that weekend. Sending you guys so much love!!",
+    parsed: { status: "Declined", events: "None", plusOne: "N/A", dietary: "N/A" }
+  }
+];
+
+export default function FinalCountLanding() {
+  const [chatMessages, setChatMessages] = useState([
+    { sender: 'bot', text: "Hey Uncle Sunil! Finalizing the headcount for Priya & Arjun's wedding. Will you and Auntie make it to the Sangeet and Reception?" }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [highlightCell, setHighlightCell] = useState(false);
+  const [spreadsheetData, setSpreadsheetData] = useState({
+    name: "Uncle Sunil & Auntie", status: "Pending", events: "All", plusOne: "Pending", dietary: "-"
+  });
+
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [simText, setSimText] = useState('');
-  const [guestList, setGuestList] = useState([
-    { name: 'Uncle Sunil & Auntie', rsvp: 'Pending', dietary: '-', events: 'All' },
-    { name: 'Sarah Jenkins (Plus One)', rsvp: 'Pending', dietary: '-', events: 'All' },
-    { name: 'Rohit Sharma', rsvp: 'Pending', dietary: '-', events: 'All' },
-  ]);
+  const [openFaq, setOpenFaq] = useState(null);
 
-  const handleDemoSubmit = (e) => {
-    e.preventDefault();
-    if (simText.toLowerCase().includes('yes') || simText.toLowerCase().includes('coming')) {
-      setGuestList([
-        { name: 'Uncle Sunil & Auntie', rsvp: 'Confirmed (2)', dietary: 'None', events: 'Sangeet & Reception' },
-        { name: 'Sarah Jenkins (Plus One)', rsvp: 'Pending', dietary: '-', events: 'All' },
-        { name: 'Rohit Sharma', rsvp: 'Pending', dietary: '-', events: 'All' },
+  const handleSimulate = (presetText, parsedData) => {
+    setChatMessages([
+      { sender: 'bot', text: "Hey Uncle Sunil! Finalizing the headcount for Priya & Arjun's wedding. Will you and Auntie make it to the Sangeet and Reception?" }, 
+      { sender: 'user', text: presetText }
+    ]);
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      setChatMessages(prev => [
+        ...prev, 
+        { sender: 'bot', text: `Perfect, got you down for 2 guests. Spreadsheet updated!` }
       ]);
-    } else if (simText.toLowerCase().includes('vegan') || simText.toLowerCase().includes('dairy')) {
-      setGuestList([
-        { name: 'Uncle Sunil & Auntie', rsvp: 'Pending', dietary: '-', events: 'All' },
-        { name: 'Sarah Jenkins (Plus One)', rsvp: 'Confirmed (2)', dietary: 'Vegan (Sarah)', events: 'Ceremony Only' },
-        { name: 'Rohit Sharma', rsvp: 'Pending', dietary: '-', events: 'All' },
-      ]);
-    }
-    setSimText('');
-  };
-
-  const handleWaitlistSubmit = (e) => {
-    e.preventDefault();
-    if (email) setSubmitted(true);
+      setSpreadsheetData({
+        name: "Uncle Sunil & Auntie",
+        status: parsedData.status,
+        events: parsedData.events,
+        plusOne: parsedData.plusOne,
+        dietary: parsedData.dietary
+      });
+      setHighlightCell(true);
+    }, 1100);
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfbfa] text-[#332a22] font-sans">
-      {/* Navigation */}
-      <nav className="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center border-b border-[#e6e1da]">
-        <div className="text-2xl font-bold tracking-tight text-[#332a22]">
-          Final<span className="text-[#bfa88f]">Count</span>
+    <div style={{ backgroundColor: '#faf7f2', color: '#332a22', fontFamily: 'sans-serif', minHeight: 'screen', paddingBottom: '80px' }}>
+      {/* Fallback layout styles injected cleanly */}
+      <style>{`
+        .wrapper { max-w: 1100px; margin: 0 auto; padding: 0 24px; }
+        .nav { display: flex; justify-content: space-between; align-items: center; padding: 32px 0; border-b: 1px solid #ebdccb; }
+        .hero { text-align: center; padding: 80px 0; }
+        .badge { background: #f2ebd9; color: #bfa88f; font-size: 12px; font-weight: bold; padding: 6px 16px; border-radius: 20px; display: inline-block; text-transform: uppercase; letter-spacing: 2px; }
+        .title { font-family: serif; font-size: 48px; margin: 24px 0; color: #332a22; }
+        .subtitle { color: #665a4e; font-size: 18px; font-weight: 300; max-width: 650px; margin: 0 auto; line-height: 1.6; }
+        .demo-container { background: #f0eae1; border: 1px solid #ebdccb; border-radius: 16px; padding: 40px 24px; margin: 40px 0; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 40px; margin-top: 40px; }
+        @media (min-width: 768px) { .grid { grid-template-columns: 5fr 7fr; } .title { font-size: 64px; } }
+        .btn-preset { background: white; border: 1px solid #d1c2b0; padding: 10px 18px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; margin: 4px; transition: 0.2s; }
+        .btn-preset:hover { background: #332a22; color: white; }
+        .phone-mock { bg: #09090b; background-color: #09090b; border: 6px solid #332a22; border-radius: 36px; padding: 16px; height: 480px; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); }
+        .sheet-mock { background: white; border-radius: 12px; border: 1px solid #ebdccb; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .sheet-header { background: #332a22; color: #faf7f2; padding: 16px; font-family: serif; font-size: 14px; display: flex; justify-content: space-between; }
+        .table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        .table th { background: #faf7f2; color: #665a4e; font-size: 11px; text-transform: uppercase; padding: 12px; border-bottom: 1px solid #ebdccb; }
+        .table td { padding: 14px 12px; border-bottom: 1px solid #f0eae1; color: #444; }
+        .msg-bubble { max-width: 85%; padding: 12px; border-radius: 12px; margin-bottom: 12px; font-size: 12px; line-height: 1.4; }
+        .msg-bot { background: #1c1c1e; color: #f5f5f7; align-self: flex-start; }
+        .msg-user { background: #bfa88f; color: white; align-self: flex-end; margin-left: auto; }
+        .card-pricing { background: #332a22; color: white; border-radius: 16px; padding: 48px; text-align: center; max-width: 450px; margin: 60px auto 0 auto; }
+        .btn-cta { background: #332a22; color: white; border: none; padding: 14px 28px; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        .input-text { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #ccc; margin: 12px 0; box-sizing: border-box; }
+      `}</style>
+
+      <div className="wrapper">
+        {/* Navigation */}
+        <div className="nav">
+          <div style={{ fontSize: '22px', fontFamily: 'serif', fontWeight: 'bold' }}>
+            FinalCount<span style={{ color: '#bfa88f' }}>.</span>
+          </div>
+          <a href="#waitlist"><button className="btn-cta" style={{ padding: '10px 20px' }}>Join Waitlist</button></a>
         </div>
-        <a href="#waitlist" className="bg-[#332a22] text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-[#4a3f35] transition">
-          Join the Waitlist
-        </a>
-      </nav>
 
-      {/* Hero Section */}
-      <header className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
-        <span className="text-xs font-bold tracking-widest uppercase text-[#bfa88f] bg-[#f5f1ec] px-4 py-2 rounded-full">
-          The Ultimate Wedding RSVP Solution
-        </span>
-        <h1 className="text-5xl md:text-6xl font-serif text-[#332a22] mt-6 tracking-tight max-w-3xl mx-auto leading-tight">
-          Stop chasing RSVPs. Let AI get your final numbers.
-        </h1>
-        <p className="text-xl text-[#665e56] mt-6 max-w-2xl mx-auto leading-relaxed">
-          The automated text assistant that chats with your guests, tracks dietary restrictions, maps multi-day events, and updates your spreadsheet automatically.
-        </p>
-        <div className="mt-10">
-          <a href="#waitlist" className="inline-block bg-[#bfa88f] text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-[#aa937a] transition shadow-md">
-            Get Your Evenings Back
-          </a>
+        {/* Hero */}
+        <div className="hero">
+          <div className="badge">The Ultimate Wedding RSVP Solution</div>
+          <h1 className="title">Stop chasing RSVPs. Let AI get your final numbers.</h1>
+          <p className="subtitle">
+            The automated text assistant that chats with your guests, tracks dietary restrictions, maps multi-day events, and updates your spreadsheet automatically.
+          </p>
+          <div style={{ marginTop: '32px' }}>
+            <a href="#demo"><button className="btn-cta">Get Your Evenings Back</button></a>
+          </div>
         </div>
-      </header>
 
-      {/* Interactive Demo Section */}
-      <section className="max-w-6xl mx-auto px-6 py-12">
-        <div className="bg-[#f5f1ec] rounded-3xl p-8 md:p-12 grid md:grid-cols-2 gap-12 items-center shadow-sm">
-          {/* Left: Phone Simulator */}
-          <div className="bg-white rounded-3xl p-6 shadow-xl border border-[#e6e1da] max-w-sm mx-auto w-full">
-            <div className="flex items-center space-x-3 border-b border-[#f5f1ec] pb-4 mb-4">
-              <div className="w-10 h-10 rounded-full bg-[#bfa88f] flex items-center justify-center text-white font-bold">FC</div>
-              <div>
-                <h3 className="font-bold text-sm">FinalCount Assistant</h3>
-                <p className="text-xs text-green-500">Active Wedding Coordinator</p>
-              </div>
+        {/* Live Demo Console */}
+        <div id="demo" className="demo-container">
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <h2 style={{ fontFamily: 'serif', fontSize: '28px', margin: '0' }}>Test the Interactive Tracker</h2>
+            <p style={{ fontSize: '14px', color: '#665a4e', marginTop: '8px' }}>Click a sample reply to simulate how the text intelligence registers messy updates instantly:</p>
+            <div style={{ marginTop: '16px' }}>
+              {SIMULATOR_PRESETS.map((p, idx) => (
+                <button key={idx} onClick={() => handleSimulate(p.text, p.parsed)} className="btn-preset">
+                  ⚡ {p.buttonLabel}
+                </button>
+              ))}
             </div>
-            
-            <div className="space-y-4 min-h-[250px] flex flex-col justify-end text-sm">
-              <div className="bg-[#f5f1ec] p-3 rounded-2xl rounded-tl-none max-w-[85%]">
-                "Hey Uncle Sunil! Finalizing the headcount for Priya & Arjun's wedding. Will you and Auntie make it to the Sangeet and Reception?"
-              </div>
-              <div className="bg-[#332a22] text-white p-3 rounded-2xl rounded-tr-none max-w-[85%] self-end">
-                "Hey! Yes we are coming to both, but we can't make the welcome dinner."
-              </div>
-              <div className="bg-[#f5f1ec] p-3 rounded-2xl rounded-tl-none max-w-[85%]">
-                "Perfect, got you down for 2 guests for the Sangeet and Reception. Spreadsheet updated!"
-              </div>
-            </div>
-
-            <form onSubmit={handleDemoSubmit} className="mt-6 pt-4 border-t border-[#f5f1ec] flex space-x-2">
-              <input 
-                type="text" 
-                placeholder="Type a test reply (e.g., 'Yes we are coming')" 
-                value={simText}
-                onChange={(e) => setSimText(e.target.value)}
-                className="flex-1 bg-[#fcfbfa] border border-[#e6e1da] rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-[#bfa88f]"
-              />
-              <button type="submit" className="bg-[#bfa88f] text-white px-4 py-2 rounded-xl text-xs font-medium">Send</button>
-            </form>
           </div>
 
-          {/* Right: Live Spreadsheet Visual */}
-          <div className="w-full overflow-hidden">
-            <h3 className="font-serif text-2xl mb-4">Your Real-Time Guest List</h3>
-            <p className="text-sm text-[#665e56] mb-6">Watch your spreadsheet update automatically as guests text back details in natural conversation.</p>
-            
-            <div className="bg-white rounded-2xl shadow-md border border-[#e6e1da] overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-[#332a22] text-white uppercase tracking-wider">
-                    <th className="p-3">Guest Name</th>
-                    <th className="p-3">RSVP Status</th>
-                    <th className="p-3">Dietary</th>
-                    <th className="p-3">Events Allowed</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e6e1da]">
-                  {guestList.map((g, i) => (
-                    <tr key={i} className="hover:bg-[#fcfbfa] transition">
-                      <td className="p-3 font-medium">{g.name}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-1 rounded-full font-bold ${g.rsvp.includes('Confirmed') ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {g.rsvp}
-                        </span>
-                      </td>
-                      <td className="p-3 text-[#665e56]">{g.dietary}</td>
-                      <td className="p-3 text-[#665e56]">{g.events}</td>
-                    </tr>
+          <div className="grid">
+            {/* Simulator Window */}
+            <div>
+              <h4 style={{ margin: '0 0 12px 4px', fontFamily: 'serif', color: '#665a4e' }}>FinalCount Assistant Chat</h4>
+              <div className="phone-mock">
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflowY: 'auto' }}>
+                  {chatMessages.map((m, i) => (
+                    <div key={i} className={`msg-bubble ${m.sender === 'bot' ? 'msg-bot' : 'msg-user'}`}>
+                      {m.text}
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                  {isTyping && <div style={{ color: '#665a4e', fontSize: '11px', fontStyle: 'italic', paddingLeft: '4px' }}>Reading message entries...</div>}
+                </div>
+              </div>
+            </div>
+
+            {/* Tracker Window */}
+            <div>
+              <h4 style={{ margin: '0 0 12px 4px', fontFamily: 'serif', color: '#665a4e' }}>Your Real-Time Guest List</h4>
+              <div className="sheet-mock">
+                <div className="sheet-header">
+                  <span>📊 Master Workbook Log</span>
+                  <span style={{ color: '#bfa88f', fontSize: '11px' }}>● Connected Live</span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Guest Name</th>
+                        <th>RSVP Status</th>
+                        <th>Dietary</th>
+                        <th>Events Allowed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ color: '#aaa' }}>
+                        <td style={{ fontWeight: 'bold', color: '#888' }}>Aunt Clara</td>
+                        <td><span style={{ color: '#15803d', background: '#f0fdf4', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>Confirmed</span></td>
+                        <td>Vegan</td>
+                        <td>All Events</td>
+                      </tr>
+                      <tr style={{ background: highlightCell ? '#fefcbf' : 'transparent', transition: '0.6s' }}>
+                        <td style={{ fontWeight: 'bold', color: '#332a22' }}>{spreadsheetData.name}</td>
+                        <td>
+                          <span style={{ 
+                            padding: '2px 8px', 
+                            borderRadius: '4px', 
+                            fontWeight: 'bold',
+                            color: spreadsheetData.status === 'Confirmed' ? '#15803d' : spreadsheetData.status === 'Declined' ? '#b91c1c' : '#b45309',
+                            background: spreadsheetData.status === 'Confirmed' ? '#f0fdf4' : spreadsheetData.status === 'Declined' ? '#fef2f2' : '#fffbeb'
+                          }}>
+                            {spreadsheetData.status}
+                          </span>
+                        </td>
+                        <td>{spreadsheetData.dietary}</td>
+                        <td>{spreadsheetData.events}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Comparison Section */}
-      <section className="max-w-5xl mx-auto px-6 py-20 border-t border-[#e6e1da]">
-        <h2 className="text-3xl font-serif text-center mb-12">Why FinalCount Wins</h2>
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="p-6 bg-[#fcfbfa] border border-[#e6e1da] rounded-2xl">
-            <h4 className="font-bold text-red-700 mb-2">The Old Way (Website Links)</h4>
-            <p className="text-sm text-[#665e56] leading-relaxed">Guests have to leave their text threads, open a browser, look up their names, and navigate clunky web forms. Older relatives get confused, links get lost, and you spend weeks chasing responses.</p>
-          </div>
-          <div className="p-6 bg-[#f5f1ec] border border-[#bfa88f] rounded-2xl">
-            <h4 className="font-bold text-[#332a22] mb-2">The New Way (FinalCount)</h4>
-            <p className="text-sm text-[#665e56] leading-relaxed">Conversations happen completely over native text and WhatsApp. If your guests know how to text a family member, they already know how to RSVP. Zero learning curve, flawless completion rates.</p>
-          </div>
+        {/* Feature Explainer */}
+        <div style={{ padding: '60px 0', textAlign: 'center', borderTop: '1px solid #ebdccb', marginTop: '60px' }}>
+          <h3 style={{ fontFamily: 'serif', fontSize: '28px' }}>Designed to pass the "Grandmother Test"</h3>
+          <p style={{ color: '#665a4e', maxWidth: '600px', margin: '12px auto 0 auto', fontSize: '15px', fontHeight: '1.6', fontWeight: 300 }}>
+            Wedding links get lost or confuse family. FinalCount sends a gentle text invitation directly to their native SMS window. If they can reply to a friend, they can successfully log their attendance details.
+          </p>
         </div>
-      </section>
 
-      {/* Lead Capture Footer */}
-      <footer id="waitlist" className="bg-[#332a22] text-white py-20 text-center px-6">
-        <div className="max-w-xl mx-auto">
-          <h2 className="text-3xl font-serif mb-4">Enjoy your engagement. Leave the count to us.</h2>
-          <p className="text-[#b3a9a0] text-sm mb-8">We are currently accepting early beta testers for the upcoming wedding season. Drop your email below to save your spot.</p>
+        {/* Lead Form Box */}
+        <div id="waitlist" className="card-pricing">
+          <span style={{ textTransform: 'uppercase', fontSize: '11px', letterSpacing: '2px', color: '#bfa88f', fontWeight: 'bold' }}>Limited Launch Allocation</span>
+          <h3 style={{ fontFamily: 'serif', fontSize: '32px', margin: '12px 0' }}>Join the Private Beta</h3>
+          <p style={{ color: '#dfd3c3', fontSize: '13px', fontHeight: '1.6', fontWeight: '300' }}>
+            We're letting a select group of couples lock in standard concierge features for a single, low fixed flat fee before regular commercial licensing starts.
+          </p>
           
-          {submitted ? (
-            <div className="bg-[#4a3f35] border border-[#bfa88f] p-4 rounded-xl text-sm max-w-sm mx-auto text-[#e6e1da]">
-              🎉 You're on the list! We'll reach out shortly to set up your assistant.
-            </div>
-          ) : (
-            <form onSubmit={handleWaitlistSubmit} className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-2 max-w-md mx-auto">
-              <input 
-                type="email" 
-                placeholder="Enter your email address" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="flex-1 px-5 py-3 rounded-full text-sm text-[#332a22] bg-white border-none focus:outline-none focus:ring-2 focus:ring-[#bfa88f]"
-              />
-              <button type="submit" className="bg-[#bfa88f] text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-[#aa937a] transition whitespace-nowrap">
-                Join the Waitlist
-              </button>
-            </form>
-          )}
-          <p className="text-xs text-[#8c8177] mt-8">© 2026 FinalCount Inc. All rights reserved.</p>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '8px', color: '#332a22', textAlign: 'left', marginTop: '32px' }}>
+            {submitted ? (
+              <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                <span style={{ fontSize: '24px' }}>✨</span>
+                <h4 style={{ fontFamily: 'serif', margin: '8px 0 4px 0' }}>Reservation Secured</h4>
+                <p style={{ fontSize: '12px', color: '#665a4e' }}>We will email you access credentials shortly.</p>
+              </div>
+            ) : (
+              <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}>
+                <label style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: '#665a4e' }}>Email Address</label>
+                <input 
+                  type="email" 
+                  required 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-text" 
+                  placeholder="Enter your email address..."
+                />
+                <button type="submit" className="btn-cta" style={{ width: '100%', marginTop: '8px' }}>Request Invitation</button>
+              </form>
+            )}
+          </div>
         </div>
-      </footer>
+
+      </div>
     </div>
   );
 }
