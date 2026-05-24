@@ -74,11 +74,25 @@ function LiveDemo() {
   const [stats, setStats] = useState({ conf: 1, pend: 2, decl: 0 });
   const timers = useRef([]);
   const msgsRef = useRef(null);
+  const phoneRef = useRef(null);
+  const sheetRef = useRef(null);
 
   function clr() { timers.current.forEach(clearTimeout); timers.current = []; }
   function after(fn, ms) { timers.current.push(setTimeout(fn, ms)); }
 
   function scrollMsgs() { setTimeout(() => { if (msgsRef.current) msgsRef.current.scrollTop = 9999; }, 60); }
+
+  // Scroll the page so the target element is comfortably visible
+  function scrollToEl(ref) {
+    if (!ref?.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const navHeight = 80;
+    const alreadyVisible = rect.top >= navHeight && rect.bottom <= window.innerHeight;
+    if (!alreadyVisible) {
+      const targetY = window.scrollY + rect.top - navHeight - 16;
+      window.scrollTo({ top: targetY, behavior: "smooth" });
+    }
+  }
 
   function run(scenario) {
     if (isRunning) return;
@@ -91,6 +105,9 @@ function LiveDemo() {
     setSheet({ name: scenario.parsed.name, status: "Pending", events: "—", plusOne: "—", dietary: "—" });
     setSheetHighlight(false);
     setStats({ conf: 1, pend: 2, decl: 0 });
+
+    // Scroll to phone immediately so user can see the demo start
+    after(() => { scrollToEl(phoneRef); }, 200);
 
     // Step 1 — bot sends message
     after(() => {
@@ -129,6 +146,8 @@ function LiveDemo() {
         pend: scenario.parsed.status === "Pending" ? 2 : 1,
         decl: scenario.parsed.status === "Declined" ? 1 : 0
       });
+      // Scroll to spreadsheet so user sees it update
+      after(() => { scrollToEl(sheetRef); }, 300);
     }, 14500);
 
     // Cooldown
@@ -217,7 +236,7 @@ function LiveDemo() {
       <div className="demo-grid" style={{ display:"grid", gridTemplateColumns:"320px minmax(0,1fr)", gap:48, alignItems:"start" }}>
 
         {/* ── Phone column ── */}
-        <div className="demo-phone-col" style={{ position:"relative" }}>
+        <div className="demo-phone-col" ref={phoneRef} style={{ position:"relative" }}>
           <div
             className={isRunning ? phoneFocused ? "d-spotlight-on" : "d-spotlight-dim" : "d-spotlight-idle"}
             style={{ borderRadius:36 }}
@@ -314,7 +333,7 @@ function LiveDemo() {
         </div>
 
         {/* ── Sheet column ── */}
-        <div className="demo-sheet-col" style={{ position:"relative" }}>
+        <div className="demo-sheet-col" ref={sheetRef} style={{ position:"relative" }}>
           <div
             className={isRunning ? sheetFocused ? "d-spotlight-on" : "d-spotlight-dim" : "d-spotlight-idle"}
             style={{ borderRadius:16 }}
@@ -532,16 +551,22 @@ export default function App() {
         .nav-link.active { color: #1a1410; }
         .nav-link.active::after { width: 100%; }
 
-        /* ── Mobile responsive ── */
+        /* Hide mobile brand block on desktop */
+        .hero-mobile-brand { display: none; }
+
+        /* Remove outer section top padding on mobile — the brand block provides it */
         @media (max-width: 768px) {
+          .hero-outer { padding-top: 0 !important; }
           /* Nav — hide text links, keep logo + CTA */
           .nav-links { display: none !important; }
           .nav-inner { padding: 0 20px !important; }
 
           /* Hero — stack vertically */
-          .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; padding: 48px 20px 40px !important; }
+          .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; padding: 32px 20px 40px !important; }
           .hero-phone-wrap { display: none !important; }
           .hero-text h1 { font-size: 38px !important; }
+          .hero-mobile-brand { display: flex !important; }
+          .hero-mobile-brand-hide { display: none !important; }
 
           /* Stat bar */
           .stat-grid { grid-template-columns: 1fr !important; gap: 20px !important; padding: 28px 20px !important; }
@@ -640,7 +665,30 @@ export default function App() {
       </nav>
 
       {/* ── HERO ── */}
-      <section style={{ maxWidth:1120, margin:"0 auto", padding:"80px 40px 72px" }}>
+      <section className="hero-outer" style={{ maxWidth:1120, margin:"0 auto", padding:"80px 40px 72px" }}>
+
+        {/* Mobile-only brand hero block — hidden on desktop */}
+        <div className="hero-mobile-brand" style={{
+          display:"none",
+          flexDirection:"column",
+          alignItems:"center",
+          textAlign:"center",
+          padding:"40px 20px 32px",
+          borderBottom:"1px solid #e0d4c4",
+          marginBottom:36
+        }}>
+          <LogoMark size={72}/>
+          <div style={{ marginTop:16, display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontFamily:"'Cormorant Garamond',Georgia,serif", fontSize:32, fontWeight:600, color:"#1a1410", letterSpacing:"0.01em" }}>
+              Final<span style={{ color:"#c9a97a" }}>Count</span>
+            </span>
+          </div>
+          <div style={{ width:40, height:1.5, background:"#c9a97a", margin:"14px auto 0" }}/>
+          <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:"#8a7a6a", letterSpacing:"0.12em", textTransform:"uppercase", marginTop:12, fontWeight:500 }}>
+            Wedding RSVP Intelligence
+          </p>
+        </div>
+
         <div className="hero-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:72, alignItems:"center" }}>
         <div className="hero-text">
           <span className="tag" style={{ marginBottom:22, display:"inline-block" }}>Wedding RSVP, Reimagined</span>
