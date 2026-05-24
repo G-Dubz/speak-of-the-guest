@@ -8,7 +8,7 @@ export default function Dashboard() {
   const [statusMessage, setStatusMessage] = useState('');
 
   // Update this URL with your actual Make.com Webhook URL from Step 1
-  const MAKE_WEBHOOK_URL = "YOUR_MAKE_WEBHOOK_URL_HERE"; 
+  const MAKE_WEBHOOK_URL = "https://hook.us2.make.com/8oekwkkbpv624rlwblyo23y2hl1i9tne"; 
 
   const handleLogin = (e) => {
     e.preventDefault();
