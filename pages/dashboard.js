@@ -458,9 +458,24 @@ function SendInvitesModal({ guests, onClose }) {
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 const TABS = ["Guest List", "Conversation Log"];
 
+// Storage key — scoped per user email so different couples don't share data
+function storageKey(email) { return `fc_guests_${email.replace(/[^a-z0-9]/gi,"_")}`; }
+
+function loadGuests(email) {
+  try {
+    const raw = localStorage.getItem(storageKey(email));
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveGuests(email, guests) {
+  try { localStorage.setItem(storageKey(email), JSON.stringify(guests)); } catch {}
+}
+
 function Dashboard({ userEmail, onLogout }) {
   const [tab, setTab] = useState("Guest List");
-  const [guests, setGuests] = useState([]);
+  // Load from localStorage on first render
+  const [guests, setGuestsRaw] = useState(() => loadGuests(userEmail));
   const [showAdd, setShowAdd] = useState(false);
   const [editGuest, setEditGuest] = useState(null);
   const [search, setSearch] = useState("");
@@ -468,6 +483,15 @@ function Dashboard({ userEmail, onLogout }) {
   const [logGuest, setLogGuest] = useState(null);
   const [simGuest, setSimGuest] = useState(null);
   const [showSendModal, setShowSendModal] = useState(false);
+
+  // Wrap setGuests so every change is also persisted to localStorage
+  function setGuests(updater) {
+    setGuestsRaw(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      saveGuests(userEmail, next);
+      return next;
+    });
+  }
 
   const confirmed = guests.filter(g=>g.status==="Confirmed").length;
   const declined  = guests.filter(g=>g.status==="Declined").length;
