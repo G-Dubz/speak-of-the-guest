@@ -233,7 +233,7 @@ Keep messages short, warm, natural — real SMS style. Never sound robotic. Use 
       onUpdateGuest({ ...guest,
         status:detectedStatus.status||guest.status,
         events:detectedStatus.events!=="None"?detectedStatus.events:guest.events,
-        dietary:detectedStatus.dietary!=="None"?detectedStatus.dietary:guest.dietary,
+        dietary:detectedStatus.dietary!=="None"?(normalizeDietary(detectedStatus.dietary)||guest.dietary):guest.dietary,
         plusOne:detectedStatus.plusOne!=="No"?detectedStatus.plusOne:guest.plusOne,
         log:messages.filter(m=>m.side).map(m=>({side:m.side,text:m.text}))
       });
@@ -639,7 +639,67 @@ function GuestModal({ initial, events, onSave, onCancel }) {
   );
 }
 
-// ── Main Dashboard ────────────────────────────────────────────────────────────
+// ── Dietary normalization ─────────────────────────────────────────────────────
+// Maps common variations to a single canonical label
+const DIETARY_ALIASES = {
+  // Dairy
+  "dairy-free":       "Dairy-Free",
+  "dairy free":       "Dairy-Free",
+  "no dairy":         "Dairy-Free",
+  "lactose free":     "Dairy-Free",
+  "lactose-free":     "Dairy-Free",
+  "no milk":          "Dairy-Free",
+  // Gluten
+  "gluten-free":      "Gluten-Free",
+  "gluten free":      "Gluten-Free",
+  "no gluten":        "Gluten-Free",
+  "celiac":           "Gluten-Free",
+  "coeliac":          "Gluten-Free",
+  // Vegan
+  "vegan":            "Vegan",
+  "plant-based":      "Vegan",
+  "plant based":      "Vegan",
+  // Vegetarian
+  "vegetarian":       "Vegetarian",
+  "veggie":           "Vegetarian",
+  "no meat":          "Vegetarian",
+  // Nut
+  "nut allergy":      "Nut Allergy",
+  "nut-free":         "Nut Allergy",
+  "nut free":         "Nut Allergy",
+  "peanut allergy":   "Nut Allergy",
+  "tree nut allergy": "Nut Allergy",
+  // Pork
+  "no pork":          "No Pork",
+  "pork-free":        "No Pork",
+  "pork free":        "No Pork",
+  "halal":            "Halal",
+  "kosher":           "Kosher",
+  // None
+  "none":             null,
+  "n/a":              null,
+  "—":                null,
+  "-":                null,
+};
+
+function normalizeDietary(raw) {
+  if (!raw) return null;
+  const key = raw.trim().toLowerCase();
+  if (key in DIETARY_ALIASES) return DIETARY_ALIASES[key];
+  // Capitalize first letter of each word for anything unrecognized
+  return raw.trim().replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Groups guests by normalized dietary label and returns sorted entries
+function getDietaryGroups(guests) {
+  const map = {};
+  guests.forEach(g => {
+    const label = normalizeDietary(g.dietary);
+    if (!label) return;
+    map[label] = (map[label] || 0) + 1;
+  });
+  return Object.entries(map).sort((a, b) => b[1] - a[1]);
+}
 const TABS = ["Guest List","Analytics","Settings"];
 
 function Dashboard({ userEmail, onLogout }) {
@@ -944,12 +1004,12 @@ function Dashboard({ userEmail, onLogout }) {
                 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16 }}>
                   <div className="db-card" style={{ padding:"20px" }}>
                     <div style={{ fontSize:11,fontWeight:600,color:C.textFaint,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8 }}>Dietary restrictions</div>
-                    {[...new Set(guestsRaw.map(g=>g.dietary).filter(Boolean))].length===0
+                    {getDietaryGroups(guestsRaw).length===0
                       ? <p style={{ fontSize:13,color:C.textFaint }}>None recorded yet.</p>
-                      : [...new Set(guestsRaw.map(g=>g.dietary).filter(Boolean))].map(d=>(
-                          <div key={d} style={{ display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid #f5f0ea`,fontSize:13,color:C.text }}>
-                            <span>{d}</span>
-                            <span style={{ color:C.gold,fontWeight:600 }}>{guestsRaw.filter(g=>g.dietary===d).length}</span>
+                      : getDietaryGroups(guestsRaw).map(([label,count])=>(
+                          <div key={label} style={{ display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid #f5f0ea`,fontSize:13,color:C.text }}>
+                            <span>{label}</span>
+                            <span style={{ color:C.gold,fontWeight:600 }}>{count}</span>
                           </div>
                         ))}
                   </div>
