@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import Head from "next/head";
 
 // ─── Logo mark as inline SVG component ───────────────────────────────────────
 function LogoMark({ size = 36, dark = false }) {
@@ -489,6 +490,16 @@ export default function App() {
 
   return (
     <div style={{ fontFamily:"'Cormorant Garamond',Georgia,serif", background:"#faf8f4", color:"#1a1410", minHeight:"100vh", overflowX:"hidden" }}>
+      <Head>
+        <title>FinalCount — Wedding RSVP Intelligence</title>
+        <meta name="description" content="The AI-powered wedding RSVP assistant that texts your guests, tracks responses, and updates your spreadsheet automatically."/>
+        <meta property="og:title" content="FinalCount — Wedding RSVP Intelligence"/>
+        <meta property="og:description" content="Stop chasing RSVPs. Let AI get the final count."/>
+        <meta property="og:url" content="https://getfinalcount.com"/>
+        <link rel="icon" href="/favicon.ico"/>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+      </Head>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
