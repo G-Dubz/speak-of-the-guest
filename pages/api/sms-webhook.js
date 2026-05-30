@@ -61,18 +61,21 @@ export default async function handler(req, res) {
   const phoneKey = from.replace(/\D/g, "");
   const stored   = await kvGet(`convo_${phoneKey}`) || {};
   const conversationHistory = Array.isArray(stored.history) ? stored.history : [];
-  const weddingContext = stored.weddingContext || {};
+
+  // Load wedding context from KV (saved by sync-wedding API)
+  const savedWedding = await kvGet("fc_wedding_context") || {};
+  const weddingContext = Object.keys(savedWedding).length > 0 ? savedWedding : (stored.weddingContext || {});
 
   // Look up guest name from the global phonebook
   let guestName = stored.guestName || null;
   if (!guestName || guestName === from) {
     const phonebook = await kvGet("fc_phonebook_global") || {};
-    // Try exact match first, then suffix match for numbers with/without country code
     guestName = phonebook[phoneKey]
       || Object.entries(phonebook).find(([k]) => phoneKey.endsWith(k) || k.endsWith(phoneKey))?.[1]
       || from;
   }
   console.log("Resolved guest name:", guestName, "for phone:", from);
+  console.log("Wedding context:", JSON.stringify(weddingContext));
 
   conversationHistory.push({ role: "user", content: msgBody });
 
@@ -83,14 +86,34 @@ export default async function handler(req, res) {
     ? new Date(weddingContext.date + "T12:00:00").toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })
     : "";
   const events  = (weddingContext?.events || []).join(", ");
+  const venue   = weddingContext?.venue || "";
+  const city    = weddingContext?.city  || "";
   const toneMap = { warm:"warm and friendly", formal:"professional and elegant", casual:"relaxed and conversational", fun:"playful and cheerful" };
   const toneDesc = toneMap[weddingContext?.tone || "warm"] || "warm and friendly";
 
-  const systemPrompt = `You are FinalCount, a ${toneDesc} AI wedding RSVP assistant texting on behalf of ${coupleNames}${weddingDate ? ` whose wedding is on ${weddingDate}` : ""}. You are texting their guest: ${guestName}.${events ? `\nThe wedding has these events: ${events}.` : ""}
+  // Build a full wedding details block so the AI can answer any question
+  const weddingDetails = [
+    coupleNames ? `Couple: ${coupleNames}` : null,
+    weddingDate ? `Date: ${weddingDate}` : null,
+    venue       ? `Venue: ${venue}` : null,
+    city        ? `Location: ${city}` : null,
+    events      ? `Events: ${events}` : null,
+  ].filter(Boolean).join("\n");
 
-Understand the guest's reply and respond warmly and concisely (under 160 chars if possible).
-After your reply, on the very last line append JSON with no markdown:
+  const systemPrompt = `You are FinalCount, a ${toneDesc} AI wedding RSVP assistant texting guests on behalf of ${coupleNames}. You are currently texting their guest: ${guestName}.
+
+WEDDING DETAILS (use these to answer any questions the guest asks):
+${weddingDetails || "No wedding details provided yet."}
+
+YOUR JOB:
+- Collect RSVP information: attendance, which events, plus-ones, dietary needs
+- Answer any questions the guest has using the wedding details above
+- If asked about the venue or location, share it confidently — don't say you don't know
+- If a detail is genuinely missing (e.g. no venue saved), politely say the couple will be in touch with those details
+- Reply warmly and concisely — this is SMS, keep it under 160 characters when possible
+- After your reply, on the very last line append JSON with no markdown:
 {"status":"Confirmed","events":"All events","dietary":"None","plusOne":"No"}
+
 Use "Confirmed", "Declined", or "Pending". Address the guest by first name: ${firstName}.`;
 
   let aiReplyText = `Thanks for getting back to us! We've noted your response.`;
