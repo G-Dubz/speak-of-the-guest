@@ -92,7 +92,7 @@ function LoginPage({ onLogin }) {
         .fu{animation:fu .5s cubic-bezier(.16,1,.3,1) both}
       `}</style>
       <nav style={{ borderBottom:`1px solid ${C.creamBorder}`,padding:"0 40px" }}>
-        <div style={{ maxWidth:1100,margin:"0 auto",display:"flex",alignItems:"center",height:64 }}>
+        <div style={{ maxWidth:1100,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"center",height:64 }}>
           <a href="/" style={{ textDecoration:"none",display:"flex",alignItems:"center",gap:10 }}>
             <LogoMark size={30}/>
             <span style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",fontSize:19,fontWeight:600,color:C.text }}>Final<span style={{ color:C.gold }}>Count</span></span>
