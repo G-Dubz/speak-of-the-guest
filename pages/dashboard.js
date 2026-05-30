@@ -905,7 +905,7 @@ function Dashboard({ userEmail, onLogout }) {
   return (
     <div style={{ minHeight:"100vh",background:"#f5f1eb",fontFamily:"'DM Sans',sans-serif",display:"flex",flexDirection:"column" }}>
       <Head>
-        <title>FinalCount — Couple Dashboard</title>
+        <title>FinalCount — Couple's Dashboard</title>
         <link rel="icon" href="/favicon.ico"/>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
       </Head>
@@ -953,7 +953,7 @@ function Dashboard({ userEmail, onLogout }) {
             <LogoMark size={26} dark={true}/>
             <span style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",fontSize:17,fontWeight:600,color:C.goldLight }}>Final<span style={{ color:C.gold }}>Count</span></span>
             <span style={{ width:1,height:16,background:"rgba(255,255,255,.2)",margin:"0 4px" }}/>
-            <span style={{ fontSize:11.5,color:"rgba(255,255,255,.5)",letterSpacing:"0.05em" }}>Couple Dashboard</span>
+            <span style={{ fontSize:11.5,color:"rgba(255,255,255,.5)",letterSpacing:"0.05em" }}>Couple's Dashboard</span>
           </div>
           <div style={{ display:"flex",alignItems:"center",gap:14 }}>
             {(wedding.bride||wedding.groom)&&(
