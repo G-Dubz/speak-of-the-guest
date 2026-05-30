@@ -768,7 +768,7 @@ function Dashboard({ userEmail, onLogout }) {
   const fileRef=useRef(null);
   const threadEndRef=useRef(null);
 
-  // Sync phonebook on mount so existing guests' names are available to the webhook
+  // Sync phonebook and wedding context on mount
   useEffect(()=>{
     if (guestsRaw.length>0) {
       fetch("/api/sync-guests",{
@@ -777,6 +777,12 @@ function Dashboard({ userEmail, onLogout }) {
         body:JSON.stringify({ guests:guestsRaw, userEmail }),
       }).catch(()=>{});
     }
+    // Always sync wedding context so webhook has latest venue/date info
+    fetch("/api/sync-wedding",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ wedding, userEmail }),
+    }).catch(()=>{});
   },[]);
   useEffect(()=>{
     if (tab!=="Live Conversations") return;
@@ -833,7 +839,19 @@ function Dashboard({ userEmail, onLogout }) {
       return n;
     });
   }
-  function setWedding(upd) { setWeddingRaw(prev=>{ const n=typeof upd==="function"?upd(prev):upd; save(userEmail,"wedding",n); return n; }); }
+  function setWedding(upd) {
+    setWeddingRaw(prev=>{
+      const n=typeof upd==="function"?upd(prev):upd;
+      save(userEmail,"wedding",n);
+      // Sync wedding context to KV so the SMS webhook can answer venue/date questions
+      fetch("/api/sync-wedding",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ wedding:n, userEmail }),
+      }).catch(()=>{});
+      return n;
+    });
+  }
 
   const confirmed=guestsRaw.filter(g=>g.status==="Confirmed").length;
   const declined =guestsRaw.filter(g=>g.status==="Declined").length;
