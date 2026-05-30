@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import Head from "next/head";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -78,6 +79,11 @@ function LoginPage({ onLogin }) {
 
   return (
     <div style={{ minHeight:"100vh",background:C.cream,fontFamily:"'Cormorant Garamond',Georgia,serif",display:"flex",flexDirection:"column" }}>
+      <Head>
+        <title>Sign in — FinalCount</title>
+        <link rel="icon" href="/favicon.ico"/>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+      </Head>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
@@ -898,6 +904,11 @@ function Dashboard({ userEmail, onLogout }) {
   },[activeThread?.messages?.length]);
   return (
     <div style={{ minHeight:"100vh",background:"#f5f1eb",fontFamily:"'DM Sans',sans-serif",display:"flex",flexDirection:"column" }}>
+      <Head>
+        <title>FinalCount — Couple Dashboard</title>
+        <link rel="icon" href="/favicon.ico"/>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+      </Head>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
