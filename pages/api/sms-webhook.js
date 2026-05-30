@@ -57,12 +57,22 @@ export default async function handler(req, res) {
     await upstash("SET", key, JSON.stringify(value));
   }
 
-  // ── Load conversation history ─────────────────────────────────────────────
+  // ── Load conversation history + resolve guest name ───────────────────────
   const phoneKey = from.replace(/\D/g, "");
   const stored   = await kvGet(`convo_${phoneKey}`) || {};
   const conversationHistory = Array.isArray(stored.history) ? stored.history : [];
-  const guestName     = stored.guestName || from;
   const weddingContext = stored.weddingContext || {};
+
+  // Look up guest name from the global phonebook
+  let guestName = stored.guestName || null;
+  if (!guestName || guestName === from) {
+    const phonebook = await kvGet("fc_phonebook_global") || {};
+    // Try exact match first, then suffix match for numbers with/without country code
+    guestName = phonebook[phoneKey]
+      || Object.entries(phonebook).find(([k]) => phoneKey.endsWith(k) || k.endsWith(phoneKey))?.[1]
+      || from;
+  }
+  console.log("Resolved guest name:", guestName, "for phone:", from);
 
   conversationHistory.push({ role: "user", content: msgBody });
 
