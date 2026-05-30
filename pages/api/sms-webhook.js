@@ -2,7 +2,6 @@
 // Receives incoming SMS from guests via Twilio webhook
 
 export default async function handler(req, res) {
-  // Always return valid TwiML so Twilio doesn't keep retrying
   function twimlOk() {
     res.setHeader("Content-Type", "text/xml");
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
@@ -10,7 +9,7 @@ export default async function handler(req, res) {
 
   if (req.method !== "POST") return res.status(405).send("Method not allowed");
 
-  console.log("SMS webhook received. Body:", JSON.stringify(req.body));
+  console.log("SMS webhook body:", JSON.stringify(req.body));
 
   const from    = req.body?.From;
   const msgBody = req.body?.Body;
@@ -23,44 +22,48 @@ export default async function handler(req, res) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken  = process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+  const KV_URL     = process.env.KV_REST_API_URL;
+  const KV_TOKEN   = process.env.KV_REST_API_TOKEN;
 
-  // ── KV helpers (Upstash Redis REST API) ──────────────────────────────────
-  const KV_URL   = process.env.KV_REST_API_URL;
-  const KV_TOKEN = process.env.KV_REST_API_TOKEN;
-
-  async function kvGet(key) {
+  // ── Upstash Redis REST helpers ────────────────────────────────────────────
+  // Upstash REST API: POST /command with body [cmd, ...args]
+  async function upstash(command, ...args) {
     try {
       if (!KV_URL || !KV_TOKEN) return null;
-      const r = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
-        headers: { Authorization: `Bearer ${KV_TOKEN}` },
-      });
-      const d = await r.json();
-      return d.result ? JSON.parse(d.result) : null;
-    } catch(e) { console.error("KV get error:", e.message); return null; }
-  }
-
-  async function kvSet(key, value) {
-    try {
-      if (!KV_URL || !KV_TOKEN) return;
-      await fetch(`${KV_URL}/set/${encodeURIComponent(key)}`, {
+      const r = await fetch(KV_URL, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${KV_TOKEN}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify([JSON.stringify(value)]),
+        body: JSON.stringify([command, ...args]),
       });
-    } catch(e) { console.error("KV set error:", e.message); }
+      const d = await r.json();
+      console.log(`Upstash ${command}:`, JSON.stringify(d).slice(0, 200));
+      return d.result;
+    } catch(e) {
+      console.error(`Upstash ${command} error:`, e.message);
+      return null;
+    }
+  }
+
+  async function kvGet(key) {
+    const raw = await upstash("GET", key);
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+
+  async function kvSet(key, value) {
+    await upstash("SET", key, JSON.stringify(value));
   }
 
   // ── Load conversation history ─────────────────────────────────────────────
   const phoneKey = from.replace(/\D/g, "");
   const stored   = await kvGet(`convo_${phoneKey}`) || {};
-  const conversationHistory = stored.history || [];
-  const guestName = stored.guestName || from;
+  const conversationHistory = Array.isArray(stored.history) ? stored.history : [];
+  const guestName     = stored.guestName || from;
   const weddingContext = stored.weddingContext || {};
 
-  // Add guest message to history
   conversationHistory.push({ role: "user", content: msgBody });
 
   // ── Generate AI response ──────────────────────────────────────────────────
@@ -69,21 +72,16 @@ export default async function handler(req, res) {
   const weddingDate = weddingContext?.date
     ? new Date(weddingContext.date + "T12:00:00").toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })
     : "";
-  const events = (weddingContext?.events || []).join(", ");
+  const events  = (weddingContext?.events || []).join(", ");
   const toneMap = { warm:"warm and friendly", formal:"professional and elegant", casual:"relaxed and conversational", fun:"playful and cheerful" };
   const toneDesc = toneMap[weddingContext?.tone || "warm"] || "warm and friendly";
 
-  const systemPrompt = `You are FinalCount, a ${toneDesc} AI wedding RSVP assistant texting on behalf of ${coupleNames}${weddingDate ? ` whose wedding is on ${weddingDate}` : ""}. You are texting their guest: ${guestName}.
-${events ? `\nThe wedding has these events: ${events}.` : ""}
+  const systemPrompt = `You are FinalCount, a ${toneDesc} AI wedding RSVP assistant texting on behalf of ${coupleNames}${weddingDate ? ` whose wedding is on ${weddingDate}` : ""}. You are texting their guest: ${guestName}.${events ? `\nThe wedding has these events: ${events}.` : ""}
 
-Your job:
-- Understand the guest's reply — they may confirm, decline, mention plus-ones, dietary needs, or event-specific attendance
-- Reply warmly and concisely — this is SMS, keep it under 160 characters when possible
-- After your reply, on the very last line append a JSON status update (no markdown, no backticks):
+Understand the guest's reply and respond warmly and concisely (under 160 chars if possible).
+After your reply, on the very last line append JSON with no markdown:
 {"status":"Confirmed","events":"All events","dietary":"None","plusOne":"No"}
-
-Use "Confirmed", "Declined", or "Pending". Use "None" / "No" when not mentioned.
-Address the guest by their first name: ${firstName}.`;
+Use "Confirmed", "Declined", or "Pending". Address the guest by first name: ${firstName}.`;
 
   let aiReplyText = `Thanks for getting back to us! We've noted your response.`;
   let parsedStatus = null;
@@ -109,14 +107,14 @@ Address the guest by their first name: ${firstName}.`;
     const last   = lines[lines.length - 1].trim();
     try { parsedStatus = JSON.parse(last); } catch {}
     aiReplyText = parsedStatus ? lines.slice(0, -1).join("\n").trim() : raw;
-    console.log("AI reply:", aiReplyText, "Parsed:", JSON.stringify(parsedStatus));
+    console.log("AI reply:", aiReplyText);
   } catch(e) {
     console.error("Claude error:", e.message);
   }
 
   conversationHistory.push({ role: "assistant", content: aiReplyText });
 
-  // ── Save conversation history ─────────────────────────────────────────────
+  // ── Save conversation ─────────────────────────────────────────────────────
   await kvSet(`convo_${phoneKey}`, {
     history: conversationHistory,
     guestName,
@@ -125,9 +123,9 @@ Address the guest by their first name: ${firstName}.`;
     lastUpdated: new Date().toISOString(),
   });
 
-  // ── Save to inbox for dashboard Live Conversations tab ───────────────────
-  const inbox = await kvGet("fc_inbox") || [];
-  inbox.unshift({
+  // ── Save to inbox list ────────────────────────────────────────────────────
+  // Use LPUSH to prepend to a Redis list, then LTRIM to keep last 500
+  const newMessage = JSON.stringify({
     from,
     guestName,
     message: msgBody,
@@ -135,8 +133,10 @@ Address the guest by their first name: ${firstName}.`;
     parsedStatus,
     timestamp: new Date().toISOString(),
   });
-  await kvSet("fc_inbox", inbox.slice(0, 500));
-  console.log("Saved to inbox. Inbox length:", inbox.length + 1);
+
+  await upstash("LPUSH", "fc_inbox_list", newMessage);
+  await upstash("LTRIM", "fc_inbox_list", "0", "499");
+  console.log("Message saved to inbox list");
 
   // ── Send AI reply back via Twilio ─────────────────────────────────────────
   try {
@@ -151,12 +151,9 @@ Address the guest by their first name: ${firstName}.`;
         body: new URLSearchParams({ From: fromNumber, To: from, Body: aiReplyText }),
       }
     );
-    const twilioData = await twilioRes.json();
-    if (!twilioRes.ok) {
-      console.error("Twilio reply error:", JSON.stringify(twilioData));
-    } else {
-      console.log("Reply sent via Twilio. SID:", twilioData.sid);
-    }
+    const td = await twilioRes.json();
+    if (!twilioRes.ok) console.error("Twilio reply error:", JSON.stringify(td));
+    else console.log("Twilio reply sent. SID:", td.sid);
   } catch(e) {
     console.error("Twilio send error:", e.message);
   }
@@ -164,6 +161,4 @@ Address the guest by their first name: ${firstName}.`;
   return twimlOk();
 }
 
-export const config = {
-  api: { bodyParser: true },
-};
+export const config = { api: { bodyParser: true } };
