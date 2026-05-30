@@ -762,7 +762,16 @@ function Dashboard({ userEmail, onLogout }) {
   const fileRef=useRef(null);
   const threadEndRef=useRef(null);
 
-  // Poll inbox every 5 seconds when on Live Conversations tab
+  // Sync phonebook on mount so existing guests' names are available to the webhook
+  useEffect(()=>{
+    if (guestsRaw.length>0) {
+      fetch("/api/sync-guests",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ guests:guestsRaw, userEmail }),
+      }).catch(()=>{});
+    }
+  },[]);
   useEffect(()=>{
     if (tab!=="Live Conversations") return;
     function poll() {
@@ -805,7 +814,19 @@ function Dashboard({ userEmail, onLogout }) {
     return ()=>clearInterval(id);
   },[tab,lastPoll]);
 
-  function setGuests(upd) { setGuestsRaw(prev=>{ const n=typeof upd==="function"?upd(prev):upd; save(userEmail,"guests",n); return n; }); }
+  function setGuests(upd) {
+    setGuestsRaw(prev=>{
+      const n=typeof upd==="function"?upd(prev):upd;
+      save(userEmail,"guests",n);
+      // Sync phone→name lookup to KV so the SMS webhook can resolve names
+      fetch("/api/sync-guests",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ guests:n, userEmail }),
+      }).catch(()=>{});
+      return n;
+    });
+  }
   function setWedding(upd) { setWeddingRaw(prev=>{ const n=typeof upd==="function"?upd(prev):upd; save(userEmail,"wedding",n); return n; }); }
 
   const confirmed=guestsRaw.filter(g=>g.status==="Confirmed").length;
